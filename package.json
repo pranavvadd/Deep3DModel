@@ -1,0 +1,7 @@
+{
+  "name": "deep3d-model",
+  "private": true,
+  "scripts": {
+    "dev": "npm run dev --prefix Deep3D/front-end"
+  }
+}
