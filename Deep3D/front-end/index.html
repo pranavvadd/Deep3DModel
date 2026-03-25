@@ -88,9 +88,18 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      padding: 0.5rem 2rem 4rem;
+      justify-content: flex-start;
+      padding: 1rem 2rem 3rem;
       position: relative;
+    }
+
+    .hero-stack {
+      position: relative;
+      width: 100%;
+      max-width: 900px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
 
     .hero-container {
@@ -99,7 +108,6 @@
       align-items: center;
       justify-content: center;
       width: 100%;
-      max-width: 900px;
       transform: translate(-11%, -13%);
       perspective: 1000px;
     }
@@ -198,12 +206,12 @@
       animation-delay: 0.75s;
     }
 
-    /* CTA Button */
+    /* CTA Button — pulled up so it sits under the hero art, not the full image box */
     .cta-container {
-      position: absolute;
-      bottom: 6rem;
-      left: 50%;
-      transform: translateX(-50%);
+      margin-top: clamp(-46vh, -34vh, -0.35rem);
+      display: flex;
+      justify-content: center;
+      align-items: center;
       white-space: nowrap;
       z-index: 3;
     }
@@ -251,14 +259,16 @@
   </header>
 
   <main>
-    <div class="hero-container">
-      <span class="hero-text hero-text--3d">3D</span>
-      <img
-        class="hero-image"
-        src="images/treeShrew.png"
-        alt="Tree shrew character"
-      />
-      <span class="hero-text hero-text--vision">Vision</span>
+    <div class="hero-stack">
+      <div class="hero-container">
+        <span class="hero-text hero-text--3d">3D</span>
+        <img
+          class="hero-image"
+          src="images/treeShrew.png"
+          alt="Tree shrew character"
+        />
+        <span class="hero-text hero-text--vision">Vision</span>
+      </div>
       <div class="cta-container">
         <a href="#" class="cta-button">Convert Now</a>
       </div>
