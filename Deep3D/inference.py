@@ -12,9 +12,9 @@ from utils import util,ffmpeg
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--gpu_id", default=0, type=int,help="choose your device")
-parser.add_argument("--model", default='./export/deep3d_v1.0.pt', type=str,help="input model path")
-parser.add_argument("--video", default='./medias/wood.mp4', type=str,help="input video path")
-parser.add_argument("--out", default='./results/wood.mp4', type=str,help="output video path")
+parser.add_argument("--model", default='./export/deep3d_v1.0_640x360_cpu.pt', type=str,help="input model path")
+parser.add_argument("--video", default='./samples/waterbottle.mp4', type=str,help="input video path")
+parser.add_argument("--out", default='./results/waterbottle_3d.mp4', type=str,help="output video path")
 parser.add_argument('--inv', action='store_true', help='some video need to reverse left and right views')
 parser.add_argument("--tmpdir", default='./tmp', type=str,help="output video path")
 opt = parser.parse_args()
@@ -24,11 +24,27 @@ net = torch.jit.load(opt.model)
 net.eval()
 process = transform.PreProcess()
 
-if 'cuda' in opt.model and torch.cuda.is_available():
-    net.to(opt.gpu_id).half()
-    process.to(opt.gpu_id).half()
-else:
+# Device detection - prioritize CPU for CPU models to avoid compatibility issues
+if 'cpu' in opt.model:
+    # Force CPU for CPU models to avoid MPS/CPU tensor mismatch
+    device = torch.device("cpu")
     opt.gpu_id = -1
+    print("Using CPU (forced for CPU model)")
+elif 'cuda' in opt.model and torch.cuda.is_available():
+    device = torch.device(f'cuda:{opt.gpu_id}')
+    net.to(device).half()
+    process.to(device).half()
+    print(f"Using CUDA GPU: {opt.gpu_id}")
+elif torch.backends.mps.is_available():
+    device = torch.device("mps")
+    net.to(device).half()
+    process.to(device).half()
+    opt.gpu_id = 0
+    print("Using Apple MPS (Metal Performance Shaders)")
+else:
+    device = torch.device("cpu")
+    opt.gpu_id = -1
+    print("Using CPU (fallback)")
 
 out_width  = int(os.path.basename(opt.model).split('_')[2].split('x')[0])
 out_height = int(os.path.basename(opt.model).split('_')[2].split('x')[1])
@@ -53,7 +69,7 @@ tip_h = tips[0].shape[0]
 tip_w = tips[0].shape[1]
 tip_background = torch.ones((3,tip_h,tip_w))
 if opt.gpu_id >= 0:
-    tip_background = tip_background.to(opt.gpu_id).half()
+    tip_background = tip_background.to(device).half()
 
 alpha = 5
 cap = cv2.VideoCapture(opt.video)
@@ -68,7 +84,7 @@ for i in range(alpha*2+1):
 
 x0 = frames_pool[0]
 if opt.gpu_id >= 0:
-    x0 = x0.to(opt.gpu_id).half()
+    x0 = x0.to(device).half()
 x0 = process(x0)
 
 print("start inference...")
@@ -94,7 +110,7 @@ for frame in tqdm(range(video_length)):
     x5  = frames_pool[np.clip(frame+alpha+beta,0,alpha*2)]
 
     if opt.gpu_id >= 0:
-        x1,x2,x3,x4,x5 = x1.to(opt.gpu_id).half(),x2.to(opt.gpu_id).half(),x3.to(opt.gpu_id).half(),x4.to(opt.gpu_id).half(),x5.to(opt.gpu_id).half()
+        x1,x2,x3,x4,x5 = x1.to(device).half(),x2.to(device).half(),x3.to(device).half(),x4.to(device).half(),x5.to(device).half()
     x1,x2,x3,x4,x5 = process(x1),process(x2),process(x3),process(x4),process(x5)
    
     input_data = torch.cat((x1,x2,x0,x3,x4,x5),dim=0)
@@ -109,7 +125,7 @@ for frame in tqdm(range(video_length)):
     if tips:
         tip = tips.pop(0)
         if opt.gpu_id >= 0:
-            tip = tip.to(opt.gpu_id).half()
+            tip = tip.to(device).half()
         tip = process(tip)
         left[:,out_height-tip_h:out_height,:] = left[:,out_height-tip_h:out_height,:]*(1-tip) + tip_background*tip
         right[:,out_height-tip_h:out_height,:] = right[:,out_height-tip_h:out_height,:]*(1-tip) + tip_background*tip
