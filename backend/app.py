@@ -23,6 +23,53 @@ INFERENCE_TIMEOUT_SECONDS = int(os.getenv("INFERENCE_TIMEOUT_SECONDS", "7200"))
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
+
+def _image_file_to_mp4(src: Path, dest: Path, suffix: str) -> None:
+    """Build a short H.264 MP4 from a still image or short GIF so inference can run."""
+    vf_even = "scale=trunc(iw/2)*2:trunc(ih/2)*2"
+    if suffix == ".gif":
+        cmd = [
+            "ffmpeg",
+            "-y",
+            "-i",
+            str(src),
+            "-c:v",
+            "libx264",
+            "-t",
+            "10",
+            "-pix_fmt",
+            "yuv420p",
+            "-vf",
+            vf_even,
+            str(dest),
+        ]
+    else:
+        cmd = [
+            "ffmpeg",
+            "-y",
+            "-loop",
+            "1",
+            "-i",
+            str(src),
+            "-c:v",
+            "libx264",
+            "-t",
+            "5",
+            "-pix_fmt",
+            "yuv420p",
+            "-vf",
+            vf_even,
+            str(dest),
+        ]
+    subprocess.run(
+        cmd,
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+
+
 app = FastAPI(title="Deep3D API", version="0.1.0")
 
 app.add_middleware(
@@ -70,9 +117,14 @@ async def convert_video(
         )
 
     suffix = Path(file.filename or "upload.mp4").suffix.lower()
-    allowed = {".mp4", ".mov", ".avi", ".mkv"}
+    video_suffixes = {".mp4", ".mov", ".avi", ".mkv"}
+    image_suffixes = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp"}
+    allowed = video_suffixes | image_suffixes
     if suffix not in allowed:
-        raise HTTPException(status_code=400, detail=f"Unsupported file type: {suffix}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file type: {suffix}. Use video (mp4, mov, …) or image (jpg, png, webp, …).",
+        )
 
     job_id = uuid.uuid4().hex[:12]
     input_path = UPLOAD_DIR / f"{job_id}{suffix}"
@@ -83,13 +135,28 @@ async def convert_video(
     with input_path.open("wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
+    if suffix in image_suffixes:
+        video_for_inference = UPLOAD_DIR / f"{job_id}_fromimg.mp4"
+        try:
+            _image_file_to_mp4(input_path, video_for_inference, suffix)
+        except subprocess.CalledProcessError as exc:
+            err = (exc.stderr or exc.stdout or "ffmpeg failed")[-2000:]
+            raise HTTPException(status_code=500, detail=f"Could not convert image to video: {err}") from exc
+        except FileNotFoundError as exc:
+            raise HTTPException(
+                status_code=500,
+                detail="ffmpeg is required to process images. Install ffmpeg and ensure it is on PATH.",
+            ) from exc
+    else:
+        video_for_inference = input_path
+
     cmd = [
         "python3",
         str(INFERENCE_SCRIPT),
         "--model",
         str(MODEL_PATH),
         "--video",
-        str(input_path),
+        str(video_for_inference),
         "--out",
         str(output_path),
         "--tmpdir",

@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Upload — ShrewScape</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html {
+      height: 100%;
+    }
+
+    body {
+      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100%;
+      min-height: 100dvh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      padding-top: 3.5rem;
+      background-color: #738e74;
+      color: #2d4a2d;
+    }
+
+    .back-link {
+      position: fixed;
+      top: 1.25rem;
+      left: 1.25rem;
+      z-index: 20;
+      display: inline-block;
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: #f4faf4;
+      text-decoration: none;
+      padding: 0.45rem 0.85rem;
+      border-radius: 9999px;
+      letter-spacing: 0.01em;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+      transition:
+        color 0.2s ease,
+        transform 0.15s ease,
+        background-color 0.2s ease,
+        box-shadow 0.2s ease;
+    }
+
+    .back-link:hover {
+      color: #fff;
+      text-decoration: none;
+      background-color: rgba(26, 46, 26, 0.5);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+      transform: translateY(-1px);
+    }
+
+    .back-link:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(225, 245, 222, 0.85);
+    }
+
+    .page-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.5rem;
+      width: 100%;
+      max-width: min(920px, 94vw);
+    }
+
+    .view-upload[hidden],
+    .view-result[hidden] {
+      display: none !important;
+    }
+
+    /* ——— Upload view ——— */
+    .upload-card {
+      width: min(100%, 85vh);
+      max-width: 100%;
+      aspect-ratio: 1 / 1;
+      height: auto;
+      margin-inline: auto;
+      background-color: #e1f5de;
+      border-radius: 2rem;
+      padding: 1.75rem 2.5rem 1.65rem;
+      box-shadow: 0 12px 40px rgba(26, 46, 26, 0.18);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      text-align: center;
+    }
+
+    .upload-card-main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      width: 100%;
+      max-width: 40rem;
+      margin-inline: auto;
+      padding: 0.25rem 0.5rem 0.15rem;
+      box-sizing: border-box;
+      min-height: 0;
+    }
+
+    .upload-card.is-dragover {
+      outline: 3px dashed #4d6b4d;
+      outline-offset: 4px;
+    }
+
+    .upload-btn {
+      border: none;
+      border-radius: 9999px;
+      padding: 1.15rem 3.1rem;
+      font-family: inherit;
+      font-size: clamp(1.28rem, 3.8vw, 1.58rem);
+      font-weight: 800;
+      color: #fff;
+      background: #365936;
+      cursor: pointer;
+      box-shadow: 0 6px 18px rgba(26, 46, 26, 0.28);
+      transition: background-color 0.2s ease, transform 0.15s ease;
+    }
+
+    .upload-btn:hover {
+      background: #2d4a2d;
+      transform: translateY(-1px);
+    }
+
+    .upload-btn:active {
+      transform: translateY(0);
+    }
+
+    .upload-hint {
+      font-size: clamp(1.3rem, 3.8vw, 1.55rem);
+      font-weight: 600;
+      color: #4a6b4a;
+      line-height: 1.3;
+    }
+
+    .upload-icon {
+      width: clamp(2.15rem, 6vw, 2.65rem);
+      height: clamp(2.15rem, 6vw, 2.65rem);
+      color: #4a6b4a;
+      flex-shrink: 0;
+      margin-top: 0.1rem;
+    }
+
+    .upload-icon path,
+    .upload-icon polyline,
+    .upload-icon line {
+      stroke-width: 2;
+    }
+
+    .file-input {
+      display: none;
+    }
+
+    /* ——— Result view ——— */
+    .view-result {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.25rem;
+      width: 100%;
+    }
+
+    .result-card {
+      width: 100%;
+      min-height: min(22rem, 45vh);
+      background-color: #e0f2e1;
+      border-radius: 2rem;
+      padding: 2rem 1.5rem;
+      box-shadow: 0 12px 40px rgba(26, 46, 26, 0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .processing-block {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1.25rem;
+      padding: 2rem 1rem;
+      color: #3e5f3f;
+    }
+
+    .processing-block[hidden] {
+      display: none !important;
+    }
+
+    .processing-icon {
+      width: 4.5rem;
+      height: 4.5rem;
+      color: #3e5f3f;
+    }
+
+    .processing-spinner {
+      width: 2.75rem;
+      height: 2.75rem;
+      border: 4px solid rgba(62, 95, 63, 0.25);
+      border-top-color: #3e5f3f;
+      border-radius: 50%;
+      animation: spin 0.85s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .processing-text {
+      font-size: 1.15rem;
+      font-weight: 700;
+      text-align: center;
+      max-width: 22rem;
+      line-height: 1.4;
+    }
+
+    .result-video {
+      width: 100%;
+      max-height: min(50vh, 420px);
+      border-radius: 1rem;
+      background: #1a1a1a;
+    }
+
+    .result-video[hidden] {
+      display: none !important;
+    }
+
+    .result-error {
+      color: #7a1f1f;
+      font-weight: 700;
+      text-align: center;
+      padding: 1rem;
+      max-width: 24rem;
+      line-height: 1.4;
+    }
+
+    .result-error[hidden] {
+      display: none !important;
+    }
+
+    .result-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 0.85rem 1rem;
+      width: 100%;
+    }
+
+    .btn-download {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem 2.75rem;
+      border-radius: 9999px;
+      font-family: inherit;
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: #fff;
+      background: #3e5f3f;
+      text-decoration: none;
+      box-shadow: 0 4px 14px rgba(26, 46, 26, 0.25);
+      transition: background-color 0.2s ease, transform 0.15s ease, opacity 0.2s ease;
+      border: none;
+      cursor: pointer;
+    }
+
+    .btn-download:hover:not([aria-disabled="true"]) {
+      background: #325032;
+      transform: translateY(-1px);
+    }
+
+    .btn-download[aria-disabled="true"] {
+      opacity: 0.45;
+      pointer-events: none;
+      cursor: not-allowed;
+    }
+
+    .btn-upload-another {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 3.25rem;
+      height: 3.25rem;
+      padding: 0;
+      border-radius: 50%;
+      font-family: inherit;
+      color: #e8f5e9;
+      background: rgba(26, 46, 26, 0.35);
+      border: 2px solid rgba(232, 245, 233, 0.65);
+      cursor: pointer;
+      transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+    }
+
+    .btn-upload-another svg {
+      width: 1.45rem;
+      height: 1.45rem;
+      flex-shrink: 0;
+    }
+
+    .btn-upload-another:hover:not(:disabled) {
+      background: rgba(26, 46, 26, 0.5);
+      border-color: rgba(232, 245, 233, 0.95);
+    }
+
+    .btn-upload-another:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* ——— Session history ——— */
+    .session-history {
+      width: 100%;
+      max-width: min(920px, 94vw);
+    }
+
+    .session-history[hidden] {
+      display: none !important;
+    }
+
+    .session-history__label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: rgba(232, 245, 233, 0.85);
+      margin-bottom: 0.65rem;
+      padding-left: 0.15rem;
+    }
+
+    .session-history__strip {
+      display: flex;
+      gap: 0.75rem;
+      overflow-x: auto;
+      overflow-y: hidden;
+      padding: 0.35rem 0.15rem 0.65rem;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .session-history__strip::-webkit-scrollbar {
+      height: 6px;
+    }
+
+    .session-history__strip::-webkit-scrollbar-thumb {
+      background: rgba(232, 245, 233, 0.35);
+      border-radius: 999px;
+    }
+
+    .history-item {
+      flex: 0 0 auto;
+      scroll-snap-align: start;
+      width: 7.5rem;
+      padding: 0.65rem 0.5rem 0.55rem;
+      border-radius: 0.85rem;
+      background: rgba(26, 46, 26, 0.35);
+      border: 2px solid rgba(232, 245, 233, 0.2);
+      cursor: pointer;
+      text-align: center;
+      transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.15s ease;
+    }
+
+    .history-item:hover {
+      border-color: rgba(232, 245, 233, 0.55);
+      background: rgba(26, 46, 26, 0.5);
+      transform: translateY(-2px);
+    }
+
+    .history-item.is-current {
+      border-color: rgba(232, 245, 233, 0.85);
+      background: rgba(26, 46, 26, 0.55);
+    }
+
+    .history-item__thumb {
+      width: 100%;
+      aspect-ratio: 16 / 10;
+      border-radius: 0.45rem;
+      background: linear-gradient(145deg, #2a4a2a 0%, #1a2e1a 100%);
+      margin-bottom: 0.45rem;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(232, 245, 233, 0.55);
+    }
+
+    .history-item__thumb svg {
+      width: 42%;
+      height: 42%;
+    }
+
+    .history-item__name {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: rgba(232, 245, 233, 0.95);
+      line-height: 1.25;
+      word-break: break-word;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body>
+  <a href="index.html" class="back-link">← Back to home</a>
+
+  <div class="page-wrap">
+    <div id="view-upload" class="view-upload">
+      <div class="upload-card" id="drop-zone" role="region" aria-label="Upload area">
+        <div class="upload-card-main">
+          <button type="button" class="upload-btn" id="upload-trigger">Upload Image</button>
+          <p class="upload-hint">or drop a file</p>
+          <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="17 8 12 3 7 8" />
+            <line x1="12" y1="3" x2="12" y2="15" />
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <div id="view-result" class="view-result" hidden>
+      <div class="result-card" aria-live="polite">
+        <div id="processing-block" class="processing-block">
+          <svg class="processing-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="2" y="6" width="20" height="12" rx="2" />
+            <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+            <circle cx="12" cy="12" r="2.5" />
+          </svg>
+          <div class="processing-spinner" role="status" aria-label="Loading"></div>
+          <p id="processing-text" class="processing-text">Processing your video…</p>
+        </div>
+        <video id="result-video" class="result-video" controls playsinline hidden></video>
+        <p id="result-error" class="result-error" hidden></p>
+      </div>
+      <div class="result-actions">
+        <a id="download-link" class="btn-download" href="#" aria-disabled="true">Download</a>
+        <button type="button" class="btn-upload-another" id="upload-another" aria-label="Upload another file" title="Upload another">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" aria-hidden="true">
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div id="session-history" class="session-history" hidden>
+      <span class="session-history__label">This session</span>
+      <div class="session-history__strip" id="history-strip"></div>
+    </div>
+
+    <input id="video-file" class="file-input" type="file" accept="image/*,video/*" />
+  </div>
+
+  <script>
+    const API_BASE = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+      ? "http://localhost:8000"
+      : "";
+
+    const viewUpload = document.getElementById("view-upload");
+    const viewResult = document.getElementById("view-result");
+    const dropZone = document.getElementById("drop-zone");
+    const uploadTrigger = document.getElementById("upload-trigger");
+    const uploadAnotherBtn = document.getElementById("upload-another");
+    const fileInput = document.getElementById("video-file");
+    const processingBlock = document.getElementById("processing-block");
+    const processingText = document.getElementById("processing-text");
+    const resultVideo = document.getElementById("result-video");
+    const resultError = document.getElementById("result-error");
+    const downloadLink = document.getElementById("download-link");
+    const sessionHistoryEl = document.getElementById("session-history");
+    const historyStrip = document.getElementById("history-strip");
+
+    let isConverting = false;
+    let currentHistoryId = null;
+    const sessionHistory = [];
+    let historyIdSeq = 0;
+
+    function showUploadView() {
+      viewUpload.hidden = false;
+      viewResult.hidden = true;
+    }
+
+    function showResultView() {
+      viewUpload.hidden = true;
+      viewResult.hidden = false;
+    }
+
+    function setDownloadEnabled(url, filename) {
+      downloadLink.href = url;
+      downloadLink.setAttribute("download", filename || "output.mp4");
+      downloadLink.removeAttribute("aria-disabled");
+      downloadLink.target = "_blank";
+      downloadLink.rel = "noopener noreferrer";
+    }
+
+    function setDownloadDisabled() {
+      downloadLink.href = "#";
+      downloadLink.setAttribute("aria-disabled", "true");
+      downloadLink.removeAttribute("download");
+    }
+
+    function applyVideoFromEntry(entry) {
+      currentHistoryId = entry.id;
+      resultVideo.src = entry.outputUrl;
+      resultVideo.hidden = false;
+      processingBlock.hidden = true;
+      resultError.hidden = true;
+      setDownloadEnabled(entry.downloadUrl, entry.outputFile);
+      document.querySelectorAll(".history-item").forEach((el) => {
+        el.classList.toggle("is-current", Number(el.dataset.id) === entry.id);
+      });
+    }
+
+    function renderHistory() {
+      if (sessionHistory.length === 0) {
+        sessionHistoryEl.hidden = true;
+        historyStrip.innerHTML = "";
+        return;
+      }
+
+      sessionHistoryEl.hidden = false;
+      historyStrip.innerHTML = "";
+
+      sessionHistory.forEach((entry) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "history-item";
+        btn.dataset.id = String(entry.id);
+        if (entry.id === currentHistoryId) btn.classList.add("is-current");
+
+        const thumb = document.createElement("div");
+        thumb.className = "history-item__thumb";
+        thumb.innerHTML = `
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="2" y="6" width="20" height="12" rx="2" />
+            <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+            <polygon points="10 11 14 13.5 10 16 10 11" fill="currentColor" stroke="none" opacity="0.85" />
+          </svg>`;
+
+        const name = document.createElement("div");
+        name.className = "history-item__name";
+        name.textContent = entry.inputName;
+
+        btn.appendChild(thumb);
+        btn.appendChild(name);
+
+        btn.addEventListener("click", () => {
+          showResultView();
+          applyVideoFromEntry(entry);
+        });
+
+        historyStrip.appendChild(btn);
+      });
+    }
+
+    function addHistoryEntry({ inputName, outputUrl, downloadUrl, outputFile }) {
+      const id = ++historyIdSeq;
+      const entry = { id, inputName, outputUrl, downloadUrl, outputFile };
+      sessionHistory.unshift(entry);
+      currentHistoryId = id;
+      renderHistory();
+      return entry;
+    }
+
+    async function startConversion() {
+      if (!fileInput.files || fileInput.files.length === 0) return;
+      if (isConverting) return;
+
+      isConverting = true;
+      uploadAnotherBtn.disabled = true;
+      showResultView();
+
+      resultError.hidden = true;
+      resultVideo.hidden = true;
+      resultVideo.removeAttribute("src");
+      processingBlock.hidden = false;
+      processingText.textContent = "Processing your video… This can take a few minutes.";
+      setDownloadDisabled();
+
+      const body = new FormData();
+      body.append("file", fileInput.files[0]);
+      body.append("inv", "false");
+      const inputName = fileInput.files[0].name;
+
+      try {
+        const response = await fetch(`${API_BASE}/api/convert`, {
+          method: "POST",
+          body,
+        });
+
+        if (!response.ok) {
+          const errorPayload = await response.json().catch(() => ({}));
+          throw new Error(errorPayload.detail || "Conversion failed");
+        }
+
+        const payload = await response.json();
+        const outputUrl = `${API_BASE}${payload.download_url}`;
+        const entry = addHistoryEntry({
+          inputName,
+          outputUrl,
+          downloadUrl: outputUrl,
+          outputFile: payload.output_file || "output.mp4",
+        });
+
+        processingBlock.hidden = true;
+        resultError.hidden = true;
+        resultVideo.src = entry.outputUrl;
+        resultVideo.hidden = false;
+        setDownloadEnabled(entry.downloadUrl, entry.outputFile);
+        resultVideo.play().catch(() => {});
+      } catch (error) {
+        processingBlock.hidden = true;
+        resultVideo.hidden = true;
+        resultError.hidden = false;
+        resultError.textContent = String(error.message || error);
+        setDownloadDisabled();
+      } finally {
+        isConverting = false;
+        uploadAnotherBtn.disabled = false;
+      }
+    }
+
+    function setFile(file) {
+      if (!file) return;
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      fileInput.files = dt.files;
+      startConversion();
+    }
+
+    uploadTrigger.addEventListener("click", () => fileInput.click());
+
+    uploadAnotherBtn.addEventListener("click", () => {
+      if (isConverting) return;
+      fileInput.value = "";
+      resultVideo.removeAttribute("src");
+      resultError.hidden = true;
+      setDownloadDisabled();
+      showUploadView();
+      fileInput.click();
+    });
+
+    fileInput.addEventListener("change", () => {
+      if (fileInput.files && fileInput.files[0]) {
+        startConversion();
+      }
+    });
+
+    ["dragenter", "dragover"].forEach((evt) => {
+      dropZone.addEventListener(evt, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropZone.classList.add("is-dragover");
+      });
+    });
+
+    ["dragleave", "drop"].forEach((evt) => {
+      dropZone.addEventListener(evt, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropZone.classList.remove("is-dragover");
+      });
+    });
+
+    dropZone.addEventListener("drop", (e) => {
+      const file = e.dataTransfer.files && e.dataTransfer.files[0];
+      if (file) setFile(file);
+    });
+  </script>
+</body>
+</html>
