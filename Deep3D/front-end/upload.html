@@ -425,7 +425,7 @@
       <div class="upload-card" id="drop-zone" role="region" aria-label="Upload area">
         <div class="upload-card-main">
           <button type="button" class="upload-btn" id="upload-trigger">Upload Image</button>
-          <p class="upload-hint">or drop a file</p>
+          <p class="upload-hint">or drop an image or .mp4 video</p>
           <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
             <polyline points="17 8 12 3 7 8" />
@@ -465,13 +465,37 @@
       <div class="session-history__strip" id="history-strip"></div>
     </div>
 
-    <input id="video-file" class="file-input" type="file" accept="image/*,video/*" />
+    <input id="video-file" class="file-input" type="file" accept="image/*,video/*,video/mp4,.mp4,.mov,.avi,.mkv" />
   </div>
 
   <script>
-    const API_BASE = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
-      ? "http://localhost:8000"
-      : "";
+    // API lives on port 8000. Only use same-origin `/api/...` when this page is also served from that port.
+    // Otherwise (Vite, Live Server, http.server, etc.) same-origin POST would hit the static server → 404.
+    // Direct http://127.0.0.1:8000 is allowed by backend CORS for localhost / 127.0.0.1 on any port.
+    const API_BASE = (() => {
+      const { hostname, port, protocol } = window.location;
+      if (protocol === "file:") return "http://127.0.0.1:8000";
+      const local =
+        hostname === "localhost" ||
+        hostname === "127.0.0.1" ||
+        hostname === "[::1]";
+      if (local && port === "8000") return "";
+      if (local) return "http://127.0.0.1:8000";
+      return "";
+    })();
+
+    /** FastAPI returns `detail` as a string or a validation error array */
+    function extractDetail(payload) {
+      const d = payload && payload.detail;
+      if (typeof d === "string") return d;
+      if (Array.isArray(d)) {
+        return d
+          .map((e) => (e && (e.msg || e.message)) || JSON.stringify(e))
+          .filter(Boolean)
+          .join(" ");
+      }
+      return "";
+    }
 
     const viewUpload = document.getElementById("view-upload");
     const viewResult = document.getElementById("view-result");
@@ -607,7 +631,8 @@
 
         if (!response.ok) {
           const errorPayload = await response.json().catch(() => ({}));
-          throw new Error(errorPayload.detail || "Conversion failed");
+          const detail = extractDetail(errorPayload);
+          throw new Error(detail || `Conversion failed (${response.status})`);
         }
 
         const payload = await response.json();
@@ -629,7 +654,12 @@
         processingBlock.hidden = true;
         resultVideo.hidden = true;
         resultError.hidden = false;
-        resultError.textContent = String(error.message || error);
+        const raw = String(error && error.message ? error.message : error);
+        const hint =
+          raw === "Failed to fetch" || raw === "Load failed" || raw === "NetworkError when attempting to fetch resource."
+            ? " Cannot reach the API. From the repo root run: uvicorn backend.app:app --reload --host 127.0.0.1 --port 8000 then open this page via npm run dev (not file://)."
+            : "";
+        resultError.textContent = raw + hint;
         setDownloadDisabled();
       } finally {
         isConverting = false;

@@ -1,6 +1,7 @@
 import os
 import shutil
 import subprocess
+import sys
 import uuid
 from pathlib import Path
 
@@ -70,16 +71,23 @@ def _image_file_to_mp4(src: Path, dest: Path, suffix: str) -> None:
     )
 
 
+def _require_ffmpeg_bins() -> None:
+    if shutil.which("ffmpeg") is None or shutil.which("ffprobe") is None:
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "ffmpeg / ffprobe not found on PATH. Install FFmpeg (includes both). "
+                "macOS: brew install ffmpeg"
+            ),
+        )
+
+
 app = FastAPI(title="Deep3D API", version="0.1.0")
 
+# Allow any localhost / 127.0.0.1 origin with any port (Vite, Live Server, etc.)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:5500",
-        "http://127.0.0.1:5500",
-    ],
+    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -99,6 +107,8 @@ def get_config() -> dict:
         "model_path": str(MODEL_PATH),
         "model_exists": MODEL_PATH.exists(),
         "inference_timeout_seconds": INFERENCE_TIMEOUT_SECONDS,
+        "ffmpeg_on_path": shutil.which("ffmpeg") is not None,
+        "ffprobe_on_path": shutil.which("ffprobe") is not None,
     }
 
 
@@ -113,8 +123,14 @@ async def convert_video(
     if not MODEL_PATH.exists():
         raise HTTPException(
             status_code=500,
-            detail=f"Model file not found at {MODEL_PATH}. Set MODEL_PATH environment variable.",
+            detail=(
+                f"Model file not found at {MODEL_PATH}. "
+                "From the repo root run: python3 scripts/download_deep3d_model.py "
+                "Then restart the API. Or set MODEL_PATH to an existing .pt file."
+            ),
         )
+
+    _require_ffmpeg_bins()
 
     suffix = Path(file.filename or "upload.mp4").suffix.lower()
     video_suffixes = {".mp4", ".mov", ".avi", ".mkv"}
@@ -151,7 +167,7 @@ async def convert_video(
         video_for_inference = input_path
 
     cmd = [
-        "python3",
+        sys.executable,
         str(INFERENCE_SCRIPT),
         "--model",
         str(MODEL_PATH),

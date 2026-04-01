@@ -1,4 +1,6 @@
-import os,json
+import json
+import os
+import shutil
 import subprocess
 # ffmpeg 3.4.6
 
@@ -58,9 +60,25 @@ def image2video(fps,imagepath,voicepath,videopath):
         os.system('ffmpeg -loglevel quiet -y -r '+str(fps)+' -i '+imagepath+' -vcodec libx264 -crf 21 '+videopath)
 
 def get_video_infos(videopath):
+    if shutil.which("ffprobe") is None:
+        raise RuntimeError(
+            "ffprobe not found on PATH. Install FFmpeg (includes ffprobe). "
+            "macOS: brew install ffmpeg  •  https://ffmpeg.org/download.html"
+        )
     args =  ['ffprobe -v quiet -print_format json -show_format -show_streams', '-i', '"'+videopath+'"']
     out_string = run(args,mode=1)
-    infos = json.loads(out_string)
+    out_string = (out_string or "").strip()
+    if not out_string or out_string[0] != "{":
+        raise RuntimeError(
+            "ffprobe produced no JSON output (check that the video file is readable). "
+            "If you see 'command not found', install FFmpeg: macOS: brew install ffmpeg"
+        )
+    try:
+        infos = json.loads(out_string)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(
+            "ffprobe output was not valid JSON. Install FFmpeg and ensure ffprobe works: ffprobe -version"
+        ) from exc
     try:
         fps = eval(infos['streams'][0]['avg_frame_rate'])
         duration = float(infos['format']['duration'])

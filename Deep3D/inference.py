@@ -1,6 +1,7 @@
 import os
 import time
 import argparse
+from pathlib import Path
 from tqdm import tqdm
 
 import numpy as np
@@ -56,20 +57,31 @@ util.clean_tempfiles(opt.tmpdir)
 util.makedirs(os.path.split(opt.out)[0])
 ffmpeg.video2voice(opt.video,os.path.join(opt.tmpdir, 'tmp.wav'))
 
-#init
+# Optional tip overlay (repo may not ship medias/tips_30.mp4)
 tips = []
-cap = cv2.VideoCapture('./medias/tips_30.mp4')
-while(True):
-    ret, tip = cap.read()
-    if ret:
-        tips.append(torch.from_numpy(cv2.resize(tip,(out_width,int(out_width*200/3840)),interpolation=cv2.INTER_LANCZOS4)))
-    else:
-        break
-tip_h = tips[0].shape[0]
-tip_w = tips[0].shape[1]
-tip_background = torch.ones((3,tip_h,tip_w))
-if opt.gpu_id >= 0:
-    tip_background = tip_background.to(device).half()
+tips_path = Path(__file__).resolve().parent / "medias" / "tips_30.mp4"
+cap_tips = cv2.VideoCapture(str(tips_path))
+if cap_tips.isOpened():
+    while True:
+        ret, tip = cap_tips.read()
+        if ret:
+            tips.append(
+                torch.from_numpy(
+                    cv2.resize(tip, (out_width, int(out_width * 200 / 3840)), interpolation=cv2.INTER_LANCZOS4)
+                )
+            )
+        else:
+            break
+cap_tips.release()
+
+tip_h = tip_w = 0
+tip_background = None
+if tips:
+    tip_h = tips[0].shape[0]
+    tip_w = tips[0].shape[1]
+    tip_background = torch.ones((3, tip_h, tip_w))
+    if opt.gpu_id >= 0:
+        tip_background = tip_background.to(device).half()
 
 alpha = 5
 cap = cv2.VideoCapture(opt.video)
