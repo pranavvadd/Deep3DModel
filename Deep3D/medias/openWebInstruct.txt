@@ -1,0 +1,4 @@
+cd /Users/emilyan/Documents/GitHub/Deep3DModel
+python3 -m pip install -r backend/requirements.txt
+python3 scripts/download_deep3d_model.py
+python3 -m uvicorn backend.app:app --reload --host 127.0.0.1 --port 8000
