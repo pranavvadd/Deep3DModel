@@ -1,0 +1,2 @@
+(Backend) In one terminal, run: python3 -m uvicorn backend.app:app --reload --host 127.0.0.1 --port 8000
+(Frontend) In another terminal, run: npm install npm run dev
