@@ -1,0 +1,27 @@
+{
+  "rig_id": "pi5_stereo_120mm_cm3",
+  "notes": "Stereo rig with two Raspberry Pi Camera Module 3 units (Sony IMX708). Comfortable tabletop baseline ~120 mm between lens centers; re-measure after mounting. Wide/noIR variants only differ in lens/IR filter—update sensor_label for your records and re-calibrate if you change hardware.",
+  "physical_baseline_mm": 120,
+  "left": {
+    "camera_index": 0,
+    "sensor_label": "Raspberry Pi Camera Module 3 (IMX708)"
+  },
+  "right": {
+    "camera_index": 1,
+    "sensor_label": "Raspberry Pi Camera Module 3 (IMX708)"
+  },
+  "capture": {
+    "width": 1920,
+    "height": 1080,
+    "fps": 30
+  },
+  "calibration": {
+    "chessboard_inner_cols": 9,
+    "chessboard_inner_rows": 6,
+    "square_size_mm": 25.0
+  },
+  "calibration_output": {
+    "directory": "calibrations",
+    "filename": "stereo.npz"
+  }
+}

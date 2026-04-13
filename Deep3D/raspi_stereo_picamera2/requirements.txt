@@ -1,0 +1,10 @@
+# --- On Raspberry Pi OS (recording with CSI cameras) ---
+# Install Picamera2 + libcamera from apt only (keeps versions matched to the OS):
+#   bash raspi_stereo_picamera2/scripts/install_pi_os_camera_stack.sh
+#   # or: sudo apt install -y python3-picamera2 python3-opencv python3-numpy rpicam-apps
+# Do not `pip install picamera2` on the Pi unless you have a specific reason; it can
+# drift from system libcamera.
+
+# --- Off-Pi / CI syntax check only (optional venv) ---
+numpy
+opencv-python-headless
