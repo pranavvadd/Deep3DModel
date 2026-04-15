@@ -19,6 +19,7 @@ import argparse
 import platform
 import signal
 import sys
+import threading
 import time
 from dataclasses import dataclass
 from datetime import datetime
@@ -249,7 +250,7 @@ def create_writer(config: RecorderConfig, frame_size: Tuple[int, int], out_path:
     return writer
 
 
-def run_recording(config: RecorderConfig) -> int:
+def run_recording(config: RecorderConfig, stop_event: Optional[threading.Event] = None) -> int:
     cap = open_camera(config)
     try:
         actual_w, actual_h, actual_fps = actual_capture_settings(cap)
@@ -282,6 +283,8 @@ def run_recording(config: RecorderConfig) -> int:
         frames = 0
 
         while not stopper.should_stop:
+            if stop_event is not None and stop_event.is_set():
+                break
             ok, frame = cap.read()
             if not ok or frame is None:
                 print("Frame read failed; stopping.")

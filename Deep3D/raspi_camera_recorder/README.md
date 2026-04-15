@@ -25,6 +25,20 @@ python recorder.py --camera-index 0 --width 1920 --height 1080 --fps 30 --codec 
 
 Press `Ctrl+C` to stop. If preview is enabled, you can also press `q`.
 
+## 3) Touchscreen UI (Raspberry Pi 3.5" display)
+If you want a touch button workflow, run:
+
+```bash
+python touch_ui.py --device /dev/video0
+```
+
+Then tap **Start Recording** on screen to begin recording. Tap **Stop Recording** to end and save the clip.
+
+Notes:
+- The UI is sized for small displays (default `480x320`)
+- If camera node `0` is wrong, use `--device /dev/videoN`
+- Recordings are saved into `./recordings`
+
 ## Common options
 - `--camera-index`: camera index (default `0`)
 - `--width` / `--height`: requested capture size (default `1920x1080`)
